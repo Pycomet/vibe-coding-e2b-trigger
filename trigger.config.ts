@@ -2,7 +2,7 @@ import { defineConfig } from "@trigger.dev/sdk/v3";
 
 export default defineConfig({
   project: "vibe-code-sandbox",
-  maxDuration: 300000, // 5 minutes
+  maxDuration: 600000, // 10 minutes (increased from 5 for long-running operations)
   retries: {
     enabledInDev: true,
     default: {

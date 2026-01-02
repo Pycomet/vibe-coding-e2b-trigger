@@ -18,91 +18,57 @@ export const getSandboxURLTask = task({
 
       const url = `https://${sandbox.getHost(payload.port)}`;
 
-      logger.info("Validating server is listening on port", { url, port: payload.port });
+      logger.info("Validating server is accessible", { url, port: payload.port });
 
-      // First, check if any process is listening on the port
-      const maxRetries = 5;
-      const retryDelay = 5000; // 5 seconds between attempts
-      let isListening = false;
-      let isResponding = false;
+      // Optimized validation - reduced retries and delays for faster response
+      const maxRetries = 3;        // Reduced from 5
+      const retryDelay = 2000;     // Reduced from 5000ms (2 seconds)
+      let isAccessible = false;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           logger.info(`Validation attempt ${attempt}/${maxRetries}`);
           
-          // Check if port is listening using netstat/ss
-          const checkPort = await sandbox.commands.run(
-            `ss -tuln | grep ':${payload.port}' || netstat -tuln | grep ':${payload.port}' || lsof -i :${payload.port}`,
-            { timeoutMs: 5000 }
-          );
+          // Skip port check command - just try HTTP request directly
+          // If HTTP works, we know the port is listening
+          const response = await fetch(url, {
+            method: "HEAD",
+            signal: AbortSignal.timeout(3000), // Reduced from 5s to 3s
+          });
 
-          if (checkPort.stdout && checkPort.stdout.trim().length > 0) {
-            isListening = true;
-            logger.info("Port is listening", { 
-              port: payload.port,
-              output: checkPort.stdout.substring(0, 200) 
-            });
-          }
-
-          // Also try HTTP request
-          try {
-            const response = await fetch(url, {
-              method: "HEAD",
-              signal: AbortSignal.timeout(5000),
-            });
-
-            if (response.ok || response.status === 404 || response.status === 403) {
-              // 404/403 are acceptable - server is responding
-              isResponding = true;
-              logger.info("Server is responding", { 
-                url, 
-                status: response.status,
-                attempt 
-              });
-            }
-          } catch (fetchError: any) {
-            // Fetch failed, but port might still be listening
-            if (isListening) {
-              logger.info("Port is listening but HTTP request failed, might need more time", {
-                error: fetchError.message
-              });
-            }
-          }
-
-          // Success if either port is listening or server is responding
-          if (isListening || isResponding) {
-            logger.info("Validation successful", { 
-              isListening, 
-              isResponding, 
+          // Accept any response (even 404/500) - server is responding
+          if (response.status) {
+            isAccessible = true;
+            logger.info("Server is accessible", { 
+              url, 
+              status: response.status,
               attempt 
             });
-            break;
+            break; // Exit immediately on success
           }
-
-          logger.warn(`Port ${payload.port} not ready yet, retrying...`, { attempt });
-        } catch (checkError: any) {
-          logger.warn(`Port check failed`, { 
-            error: checkError.message,
+        } catch (fetchError: any) {
+          logger.warn(`Attempt ${attempt} failed`, { 
+            error: fetchError.message,
             attempt 
           });
         }
 
-        if (attempt < maxRetries) {
+        // Don't wait after last attempt
+        if (attempt < maxRetries && !isAccessible) {
           await new Promise(resolve => setTimeout(resolve, retryDelay));
         }
       }
 
-      if (!isListening && !isResponding) {
-        const errorMsg = `No service found listening on port ${payload.port}. Make sure your server is running and listening on this port.`;
-        logger.error(errorMsg, { port: payload.port, url });
-        throw new Error(errorMsg);
+      // Return URL even if validation fails - let user/frontend decide
+      if (!isAccessible) {
+        logger.warn(`Server on port ${payload.port} didn't respond to validation, but returning URL anyway`, {
+          port: payload.port,
+          url
+        });
+        // Don't throw - return the URL and let user verify it's working
       }
 
-      logger.info("Server validation complete", { 
-        url, 
-        isListening, 
-        isResponding 
-      });
+      logger.info("URL retrieval complete", { url, isAccessible });
 
       return {
         url,

@@ -10,7 +10,7 @@ export const createSandboxTask = task({
 
       const sandbox = await Sandbox.create({
         apiKey: process.env.E2B_API_KEY!,
-        timeoutMs: payload.timeout ?? 1800000, // Default 30 minutes (auto-cleanup)
+        timeoutMs: payload.timeout ?? 3600000, // Default 60 minutes (increased from 30)
       });
 
       logger.info("Sandbox created successfully", { 

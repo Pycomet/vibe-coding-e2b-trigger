@@ -3,6 +3,7 @@ import { ChatProvider } from '@/lib/chat-context'
 import { CommandLogsStream } from '@/components/commands-logs/commands-logs-stream'
 import { ErrorMonitor } from '@/components/error-monitor/error-monitor'
 import { SandboxCleanup } from '@/components/sandbox-cleanup'
+import { SandboxHeartbeat } from '@/components/sandbox-heartbeat'
 import { SandboxState } from '@/components/modals/sandbox-state'
 import { Toaster } from '@/components/ui/sonner'
 import type { ReactNode } from 'react'
@@ -49,6 +50,7 @@ export default function RootLayout({
         <Toaster />
         <CommandLogsStream />
         <SandboxCleanup />
+        <SandboxHeartbeat />
         <SandboxState />
       </body>
     </html>
