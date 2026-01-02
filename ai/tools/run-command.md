@@ -9,11 +9,13 @@ Use this tool to run a command inside an existing sandbox. You can choose whethe
 
 Use Run Command when:
 
-1. You need to install dependencies (e.g., `pnpm install`)
-2. You want to run a build or test process (e.g., `pnpm build`, `vite build`)
-3. You need to launch a development server or long-running process
+1. You need to install dependencies (e.g., `pnpm install` - **ALWAYS pnpm, NEVER npm**)
+2. You want to run a build or test process (e.g., `pnpm build`, `pnpm test` - **ALWAYS pnpm**)
+3. You need to launch a development server or long-running process (`pnpm run dev` - **ALWAYS pnpm**)
 4. You need to compile or execute code within the sandbox
 5. You want to run a task in the background without blocking the session
+
+**CRITICAL: The sandbox has pnpm pre-installed. ALWAYS use `pnpm`, NEVER use `npm` for any package management operations.**
 
 ## Sequencing Rules
 
@@ -53,14 +55,14 @@ Use Run Command when:
 <example>
 User: Install dependencies and then run the dev server  
 Assistant:  
-1. Run Command: `{ command: "pnpm", args: ["install"], wait: true }`  
-2. Run Command: `{ command: "pnpm", args: ["run", "dev"], wait: false }`  
+1. Run Command: `{ command: "pnpm", args: ["install"], wait: true }`  (CORRECT - using pnpm)
+2. Run Command: `{ command: "pnpm", args: ["run", "dev"], wait: false }`  (CORRECT - using pnpm)
 </example>
 
 <example>
-User: Build the app with Vite  
+User: Build the app with vite
 Assistant:  
-Run Command: `{ command: "vite", args: ["build"], wait: true }`  
+Run Command: `{ command: "vite", args: ["build"], wait: true }`
 </example>
 
 ## Summary

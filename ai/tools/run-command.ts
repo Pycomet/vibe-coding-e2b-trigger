@@ -21,13 +21,13 @@ export const runCommand = ({ writer }: Params) =>
       command: z
         .string()
         .describe(
-          "The base command to run (e.g., 'npm', 'node', 'python', 'ls', 'cat'). Do NOT include arguments here. IMPORTANT: Each command runs independently in a fresh shell session - there is no persistent state between commands. You cannot use 'cd' to change directories for subsequent commands."
+          "The base command to run (e.g., 'pnpm', 'npm', 'node', 'python', 'ls', 'cat'). Do NOT include arguments here. CRITICAL: Use 'pnpm' for all package management, NEVER 'npm'. IMPORTANT: Each command runs independently in a fresh shell session - there is no persistent state between commands. You cannot use 'cd' to change directories for subsequent commands."
         ),
       args: z
         .array(z.string())
         .optional()
         .describe(
-          "Array of arguments for the command. Each argument should be a separate string (e.g., ['install', '--verbose'] for npm install --verbose, or ['src/index.js'] to run a file, or ['-la', './src'] to list files). IMPORTANT: Use relative paths (e.g., 'src/file.js') or absolute paths instead of trying to change directories with 'cd' first, since each command runs in a fresh shell session."
+          "Array of arguments for the command. Each argument should be a separate string (e.g., ['install', '--verbose'] for pnpm install --verbose, or ['src/index.js'] to run a file, or ['-la', './src'] to list files). IMPORTANT: Use relative paths (e.g., 'src/file.js') or absolute paths instead of trying to change directories with 'cd' first, since each command runs in a fresh shell session."
         ),
       sudo: z
         .boolean()
