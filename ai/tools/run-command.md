@@ -9,13 +9,11 @@ Use this tool to run a command inside an existing sandbox. You can choose whethe
 
 Use Run Command when:
 
-1. You need to install dependencies (e.g., `pnpm install` - **ALWAYS pnpm, NEVER npm**)
-2. You want to run a build or test process (e.g., `pnpm build`, `pnpm test` - **ALWAYS pnpm**)
-3. You need to launch a development server or long-running process (`pnpm run dev` - **ALWAYS pnpm**)
+1. You need to install dependencies (e.g., `pnpm install`)
+2. You want to run a build or test process (e.g., `pnpm build`, `vite build`)
+3. You need to launch a development server or long-running process
 4. You need to compile or execute code within the sandbox
 5. You want to run a task in the background without blocking the session
-
-**CRITICAL: The sandbox has pnpm pre-installed. ALWAYS use `pnpm`, NEVER use `npm` for any package management operations.**
 
 ## Sequencing Rules
 

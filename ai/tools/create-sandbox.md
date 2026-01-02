@@ -27,10 +27,9 @@ Each sandbox mimics a real-world development environment and supports rapid iter
 - **Standard Linux utilities** (curl, wget, tar, unzip, etc.)
 
 **Package managers available:**
-- **ALWAYS use `pnpm`** for JavaScript/TypeScript projects (pre-installed, faster than npm)
+- Use `pnpm` for JavaScript/TypeScript projects (recommended - faster than npm)
+- Use `npm` as fallback
 - Use `dnf` for system packages
-
-**IMPORTANT: Always use pnpm, never npm. The sandbox has pnpm pre-installed.**
 
 **Important:** Port 8080 is reserved for internal applications. Use different ports (3000, 5000, 8000, etc.) for your services.
 

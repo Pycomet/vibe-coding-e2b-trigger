@@ -22,7 +22,7 @@ Use Get Sandbox URL when:
 
 - **CRITICAL**: Only call this tool after the server process has successfully started and is listening on the port
 - Wait 5-10 seconds after starting a dev server before calling this tool to ensure the server is ready
-- For commands like `pnpm run dev`, `pnpm start`, or similar, the server needs time to build and start
+- For commands like `npm run dev`, `npm start`, or similar, the server needs time to build and start
 - Use typical ports based on framework defaults (e.g., 3000 for Next.js, 5173 for Vite, 8080 for Node APIs)
 - If multiple services run on different ports, ensure each port was exposed up front during sandbox creation
 - Don't attempt to expose or discover ports dynamically after creation — only predefined ports are valid
