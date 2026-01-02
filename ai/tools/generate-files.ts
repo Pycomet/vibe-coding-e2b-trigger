@@ -1,12 +1,12 @@
 import type { UIMessageStreamWriter, UIMessage } from 'ai'
 import type { DataPart } from '../messages/data-parts'
-import { Sandbox } from '@vercel/sandbox'
 import { getContents, type File } from './generate-files/get-contents'
 import { getRichError } from './get-rich-error'
-import { getWriteFiles } from './generate-files/get-write-files'
 import { tool } from 'ai'
 import description from './generate-files.md'
 import z from 'zod/v3'
+import { tasks, runs } from '@trigger.dev/sdk/v3'
+import type { generateFilesTask } from '@/trigger/generate-files'
 
 interface Params {
   modelId: string
@@ -27,39 +27,14 @@ export const generateFiles = ({ writer, modelId }: Params) =>
         data: { paths: [], status: 'generating' },
       })
 
-      let sandbox: Sandbox | null = null
-
-      try {
-        sandbox = await Sandbox.get({ sandboxId })
-      } catch (error) {
-        const richError = getRichError({
-          action: 'get sandbox by id',
-          args: { sandboxId },
-          error,
-        })
-
-        writer.write({
-          id: toolCallId,
-          type: 'data-generating-files',
-          data: { error: richError.error, paths: [], status: 'error' },
-        })
-
-        return richError.message
-      }
-
-      const writeFiles = getWriteFiles({ sandbox, toolCallId, writer })
       const iterator = getContents({ messages, modelId, paths })
-      const uploaded: File[] = []
+      const generated: File[] = []
 
       try {
+        // First, generate all file contents
         for await (const chunk of iterator) {
           if (chunk.files.length > 0) {
-            const error = await writeFiles(chunk)
-            if (error) {
-              return error
-            } else {
-              uploaded.push(...chunk.files)
-            }
+            generated.push(...chunk.files)
           } else {
             writer.write({
               id: toolCallId,
@@ -71,6 +46,51 @@ export const generateFiles = ({ writer, modelId }: Params) =>
             })
           }
         }
+
+        // Trigger task to write files to sandbox
+        writer.write({
+          id: toolCallId,
+          type: 'data-generating-files',
+          data: {
+            status: 'uploading',
+            paths: generated.map((f) => f.path),
+          },
+        })
+
+        const handle = await tasks.trigger<typeof generateFilesTask>(
+          'generate-files',
+          {
+            sandboxId,
+            files: generated.map((f) => ({ path: f.path, content: f.content })),
+          }
+        )
+
+        // Subscribe to real-time updates
+        for await (const run of runs.subscribeToRun(handle.id)) {
+          if (run.status === 'COMPLETED' && run.output) {
+            const output = run.output as { paths: string[]; status: string }
+
+            writer.write({
+              id: toolCallId,
+              type: 'data-generating-files',
+              data: { paths: output.paths, status: 'uploaded' },
+            })
+
+            return `Successfully generated and uploaded ${
+              generated.length
+            } files. Their paths and contents are as follows:
+        ${generated
+          .map((file) => `Path: ${file.path}\nContent: ${file.content}\n`)
+          .join('\n')}`
+          }
+
+          if (run.status === 'FAILED' || run.status === 'CRASHED' || run.status === 'SYSTEM_FAILURE') {
+            const errorMsg = typeof run.error === 'string' ? run.error : 'Failed to generate files'
+            throw new Error(errorMsg)
+          }
+        }
+
+        throw new Error('Task completed without output')
       } catch (error) {
         const richError = getRichError({
           action: 'generate file contents',
@@ -90,18 +110,5 @@ export const generateFiles = ({ writer, modelId }: Params) =>
 
         return richError.message
       }
-
-      writer.write({
-        id: toolCallId,
-        type: 'data-generating-files',
-        data: { paths: uploaded.map((file) => file.path), status: 'done' },
-      })
-
-      return `Successfully generated and uploaded ${
-        uploaded.length
-      } files. Their paths and contents are as follows:
-        ${uploaded
-          .map((file) => `Path: ${file.path}\nContent: ${file.content}\n`)
-          .join('\n')}`
     },
   })

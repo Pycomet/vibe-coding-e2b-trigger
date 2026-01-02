@@ -1,4 +1,4 @@
-Use this tool to run a command inside an existing Vercel Sandbox. You can choose whether the command should block until completion or run in the background by setting the `wait` parameter:
+Use this tool to run a command inside an existing sandbox. You can choose whether the command should block until completion or run in the background by setting the `wait` parameter:
 
 - `wait: true` → Command runs and **must complete** before the response is returned.
 - `wait: false` → Command starts in the background, and the response returns immediately with its `commandId`.

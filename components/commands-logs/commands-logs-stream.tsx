@@ -17,28 +17,45 @@ export function CommandLogsStream() {
   useEffect(() => {
     if (sandboxId) {
       for (const command of commands.filter(
-        (command) => typeof command.exitCode === 'undefined'
+        (command) => {
+          // Stream logs for commands that:
+          // 1. Don't have an exitCode yet (still running)
+          // 2. Have an exitCode but no logs yet (completed but logs weren't streamed)
+          const hasNoLogs = !command.logs || command.logs.length === 0
+          return typeof command.exitCode === 'undefined' || hasNoLogs
+        }
       )) {
         if (!ref.current[command.cmdId]) {
           const iterator = getCommandLogs(sandboxId, command.cmdId)
           ref.current[command.cmdId] = iterator
           ;(async () => {
-            for await (const log of iterator) {
-              addLog({
-                sandboxId: sandboxId,
-                cmdId: command.cmdId,
-                log: log,
-              })
+            try {
+              for await (const log of iterator) {
+                addLog({
+                  sandboxId: sandboxId,
+                  cmdId: command.cmdId,
+                  log: log,
+                })
+              }
+            } catch (error) {
+              console.error(`Error streaming logs for command ${command.cmdId}:`, error)
             }
 
-            const log = await getCommand(sandboxId, command.cmdId)
-            upsertCommand({
-              sandboxId: log.sandboxId,
-              cmdId: log.cmdId,
-              exitCode: log.exitCode ?? 0,
-              command: command.command,
-              args: command.args,
-            })
+            // Only update exitCode if we don't already have one
+            if (typeof command.exitCode === 'undefined') {
+              try {
+                const log = await getCommand(sandboxId, command.cmdId)
+                upsertCommand({
+                  sandboxId: log.sandboxId,
+                  cmdId: log.cmdId,
+                  exitCode: log.exitCode ?? 0,
+                  command: command.command,
+                  args: command.args,
+                })
+              } catch (error) {
+                console.error(`Error getting command info for ${command.cmdId}:`, error)
+              }
+            }
           })()
         }
       }

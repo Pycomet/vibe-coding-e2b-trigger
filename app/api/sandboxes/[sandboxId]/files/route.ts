@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { Sandbox } from '@vercel/sandbox'
+import { Sandbox } from 'e2b'
 import z from 'zod/v3'
 
 const FileParamsSchema = z.object({
@@ -24,23 +24,28 @@ export async function GET(
     )
   }
 
-  const sandbox = await Sandbox.get(fileParams.data)
-  const stream = await sandbox.readFile(fileParams.data)
-  if (!stream) {
+  try {
+    const sandbox = await Sandbox.connect(fileParams.data.sandboxId, {
+      apiKey: process.env.E2B_API_KEY!,
+    })
+
+    const content = await sandbox.files.read(fileParams.data.path)
+
+    if (!content) {
+      return NextResponse.json(
+        { error: 'File not found in the Sandbox' },
+        { status: 404 }
+      )
+    }
+
+    return new NextResponse(content, {
+      headers: { 'Content-Type': 'text/plain' },
+    })
+  } catch (error) {
+    console.error('Error reading file:', error)
     return NextResponse.json(
-      { error: 'File not found in the Sandbox' },
-      { status: 404 }
+      { error: 'Failed to read file' },
+      { status: 500 }
     )
   }
-
-  return new NextResponse(
-    new ReadableStream({
-      async pull(controller) {
-        for await (const chunk of stream) {
-          controller.enqueue(chunk)
-        }
-        controller.close()
-      },
-    })
-  )
 }

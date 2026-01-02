@@ -1,10 +1,11 @@
 import type { UIMessageStreamWriter, UIMessage } from 'ai'
 import type { DataPart } from '../messages/data-parts'
-import { Command, Sandbox } from '@vercel/sandbox'
 import { getRichError } from './get-rich-error'
 import { tool } from 'ai'
 import description from './run-command.md'
 import z from 'zod/v3'
+import { tasks, runs } from '@trigger.dev/sdk/v3'
+import type { runCommandTask } from '@/trigger/run-command'
 
 interface Params {
   writer: UIMessageStreamWriter<UIMessage<never, DataPart>>
@@ -16,7 +17,7 @@ export const runCommand = ({ writer }: Params) =>
     inputSchema: z.object({
       sandboxId: z
         .string()
-        .describe('The ID of the Vercel Sandbox to run the command in'),
+        .describe('The ID of the sandbox to run the command in'),
       command: z
         .string()
         .describe(
@@ -48,41 +49,76 @@ export const runCommand = ({ writer }: Params) =>
         data: { sandboxId, command, args, status: 'executing' },
       })
 
-      let sandbox: Sandbox | null = null
-
       try {
-        sandbox = await Sandbox.get({ sandboxId })
-      } catch (error) {
-        const richError = getRichError({
-          action: 'get sandbox by id',
-          args: { sandboxId },
-          error,
-        })
+        // Trigger the Trigger.dev task
+        const handle = await tasks.trigger<typeof runCommandTask>(
+          'run-command',
+          { sandboxId, command, args, sudo, wait }
+        )
 
-        writer.write({
-          id: toolCallId,
-          type: 'data-run-command',
-          data: {
-            sandboxId,
-            command,
-            args,
-            error: richError.error,
-            status: 'error',
-          },
-        })
+        // Subscribe to real-time updates
+        for await (const run of runs.subscribeToRun(handle.id)) {
+          if (run.status === 'COMPLETED' && run.output) {
+            const output = run.output as {
+              commandId: string
+              exitCode?: number
+              status: string
+              stdout?: string
+              stderr?: string
+            }
 
-        return richError.message
-      }
+            // Create logs array from stdout/stderr for blocking commands
+            const logs = []
+            if (wait && output.stdout) {
+              logs.push({
+                data: output.stdout,
+                stream: 'stdout' as const,
+                timestamp: Date.now(),
+              })
+            }
+            if (wait && output.stderr) {
+              logs.push({
+                data: output.stderr,
+                stream: 'stderr' as const,
+                timestamp: Date.now(),
+              })
+            }
 
-      let cmd: Command | null = null
+            // Send the command with PID so UI can start streaming logs
+            writer.write({
+              id: toolCallId,
+              type: 'data-run-command',
+              data: {
+                sandboxId,
+                commandId: output.commandId,
+                command,
+                args,
+                exitCode: output.exitCode,
+                status: wait ? 'done' : 'running',
+                logs: logs.length > 0 ? logs : undefined,
+              },
+            })
 
-      try {
-        cmd = await sandbox.runCommand({
-          detached: true,
-          cmd: command,
-          args,
-          sudo,
-        })
+            if (!wait) {
+              return `The command \`${command} ${args.join(
+                ' '
+              )}\` has been started in the background in the sandbox with ID \`${sandboxId}\` with the commandId ${
+                output.commandId
+              }. The output will be streamed to the logs panel in real-time.`
+            }
+
+            return `The command \`${command} ${args.join(
+              ' '
+            )}\` has finished with exit code ${output.exitCode}. Check the logs panel for the full output.`
+          }
+
+          if (run.status === 'FAILED' || run.status === 'CRASHED' || run.status === 'SYSTEM_FAILURE') {
+            const errorMsg = typeof run.error === 'string' ? run.error : 'Failed to run command'
+            throw new Error(errorMsg)
+          }
+        }
+
+        throw new Error('Task completed without output')
       } catch (error) {
         const richError = getRichError({
           action: 'run command in sandbox',
@@ -95,102 +131,6 @@ export const runCommand = ({ writer }: Params) =>
           type: 'data-run-command',
           data: {
             sandboxId,
-            command,
-            args,
-            error: richError.error,
-            status: 'error',
-          },
-        })
-
-        return richError.message
-      }
-
-      writer.write({
-        id: toolCallId,
-        type: 'data-run-command',
-        data: {
-          sandboxId,
-          commandId: cmd.cmdId,
-          command,
-          args,
-          status: 'executing',
-        },
-      })
-
-      if (!wait) {
-        writer.write({
-          id: toolCallId,
-          type: 'data-run-command',
-          data: {
-            sandboxId,
-            commandId: cmd.cmdId,
-            command,
-            args,
-            status: 'running',
-          },
-        })
-
-        return `The command \`${command} ${args.join(
-          ' '
-        )}\` has been started in the background in the sandbox with ID \`${sandboxId}\` with the commandId ${
-          cmd.cmdId
-        }.`
-      }
-
-      writer.write({
-        id: toolCallId,
-        type: 'data-run-command',
-        data: {
-          sandboxId,
-          commandId: cmd.cmdId,
-          command,
-          args,
-          status: 'waiting',
-        },
-      })
-
-      const done = await cmd.wait()
-      try {
-        const [stdout, stderr] = await Promise.all([
-          done.stdout(),
-          done.stderr(),
-        ])
-
-        writer.write({
-          id: toolCallId,
-          type: 'data-run-command',
-          data: {
-            sandboxId,
-            commandId: cmd.cmdId,
-            command,
-            args,
-            exitCode: done.exitCode,
-            status: 'done',
-          },
-        })
-
-        return (
-          `The command \`${command} ${args.join(
-            ' '
-          )}\` has finished with exit code ${done.exitCode}.` +
-          `Stdout of the command was: \n` +
-          `\`\`\`\n${stdout}\n\`\`\`\n` +
-          `Stderr of the command was: \n` +
-          `\`\`\`\n${stderr}\n\`\`\``
-        )
-      } catch (error) {
-        const richError = getRichError({
-          action: 'wait for command to finish',
-          args: { sandboxId, commandId: cmd.cmdId },
-          error,
-        })
-
-        writer.write({
-          id: toolCallId,
-          type: 'data-run-command',
-          data: {
-            sandboxId,
-            commandId: cmd.cmdId,
             command,
             args,
             error: richError.error,

@@ -23,10 +23,20 @@ export const dataPartSchema = z.object({
     status: z.enum(['executing', 'running', 'waiting', 'done', 'error']),
     exitCode: z.number().optional(),
     error: errorSchema.optional(),
+    logs: z
+      .array(
+        z.object({
+          data: z.string(),
+          stream: z.enum(['stdout', 'stderr']),
+          timestamp: z.number(),
+        })
+      )
+      .optional(),
   }),
   'get-sandbox-url': z.object({
     url: z.string().optional(),
-    status: z.enum(['loading', 'done']),
+    status: z.enum(['loading', 'done', 'error']),
+    error: errorSchema.optional(),
   }),
   'report-errors': z.object({
     summary: z.string(),
