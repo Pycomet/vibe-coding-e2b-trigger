@@ -21,7 +21,7 @@ export const runCommand = ({ writer }: Params) =>
       command: z
         .string()
         .describe(
-          "The base command to run (e.g., 'pnpm', 'npm', 'node', 'python', 'ls', 'cat'). Do NOT include arguments here. CRITICAL: Use 'pnpm' for all package management, NEVER 'npm'. IMPORTANT: Each command runs independently in a fresh shell session - there is no persistent state between commands. You cannot use 'cd' to change directories for subsequent commands."
+          "The base command to run (e.g., 'npm', 'node', 'python', 'ls', 'cat'). Do NOT include arguments here. IMPORTANT: Each command runs independently in a fresh shell session - there is no persistent state between commands. You cannot use 'cd' to change directories for subsequent commands."
         ),
       args: z
         .array(z.string())
