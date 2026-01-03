@@ -1,4 +1,4 @@
-Use this tool to retrieve a publicly accessible URL for a specific port that was exposed during the creation of a Vercel Sandbox. This allows users (and the assistant) to preview web applications, access APIs, or interact with services running inside the sandbox via HTTP.
+Use this tool to retrieve a publicly accessible URL for a specific port that was exposed during the creation of a sandbox. This allows users (and the assistant) to preview web applications, access APIs, or interact with services running inside the sandbox via HTTP.
 
 ⚠️ The requested port must have been explicitly declared when the sandbox was created. If the port was not exposed at sandbox creation time, this tool will NOT work for that port.
 
@@ -20,10 +20,30 @@ Use Get Sandbox URL when:
 
 ## Best Practices
 
-- Only call this tool after the server process has successfully started
+- **CRITICAL**: Only call this tool after the server process has successfully started and is listening on the port
+- Wait 5-10 seconds after starting a dev server before calling this tool to ensure the server is ready
+- For commands like `npm run dev`, `npm start`, or similar, the server needs time to build and start
 - Use typical ports based on framework defaults (e.g., 3000 for Next.js, 5173 for Vite, 8080 for Node APIs)
 - If multiple services run on different ports, ensure each port was exposed up front during sandbox creation
-- Don’t attempt to expose or discover ports dynamically after creation — only predefined ports are valid
+- Don't attempt to expose or discover ports dynamically after creation — only predefined ports are valid
+- Check the command logs to confirm the server is running before getting the URL (look for messages like "ready on", "listening on", "server started")
+
+## URL Validation
+
+This tool automatically validates that a server is actually listening before returning the URL:
+
+**Validation Process:**
+1. **Port Check** - Uses `ss`/`netstat`/`lsof` to verify a process is listening on the port
+2. **HTTP Check** - Makes HTTP request to confirm server is responding
+3. **Up to 15 attempts** - Waits 2 seconds between attempts (up to 30 seconds total)
+4. **Fails if no server** - Throws error if no service is listening on the port
+
+**Accepted HTTP statuses:**
+- ✅ 200 OK - Server responding successfully
+- ✅ 404 Not Found - Server is running, just no route at root (common for SPAs)
+- ✅ 403 Forbidden - Server is running but access restricted
+
+**This prevents "Closed Port Error"** - The tool will only return a URL when a server is actually listening and ready to accept connections.
 
 ## When NOT to Use This Tool
 
@@ -41,8 +61,8 @@ User: Can I preview the app after it's built?
 Assistant:
 1. Create Sandbox: expose port 3000
 2. Generate Files: scaffold the app
-3. Run Command: `npm run dev`
-4. (Optional) Wait Command
+3. Run Command: `pnpm install` (wait: true)
+4. Run Command: `pnpm run dev` (wait: false)
 5. Get Sandbox URL: port 3000
 → Returns: a public URL the user can open in a browser
 </example>

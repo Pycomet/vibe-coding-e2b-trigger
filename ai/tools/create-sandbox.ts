@@ -1,10 +1,11 @@
 import type { UIMessageStreamWriter, UIMessage } from 'ai'
 import type { DataPart } from '../messages/data-parts'
-import { Sandbox } from '@vercel/sandbox'
 import { getRichError } from './get-rich-error'
 import { tool } from 'ai'
 import description from './create-sandbox.md'
 import z from 'zod/v3'
+import { tasks, runs } from '@trigger.dev/sdk/v3'
+import type { createSandboxTask } from '@/trigger/create-sandbox'
 
 interface Params {
   writer: UIMessageStreamWriter<UIMessage<never, DataPart>>
@@ -17,17 +18,17 @@ export const createSandbox = ({ writer }: Params) =>
       timeout: z
         .number()
         .min(600000)
-        .max(2700000)
+        .max(7200000)
         .optional()
         .describe(
-          'Maximum time in milliseconds the Vercel Sandbox will remain active before automatically shutting down. Minimum 600000ms (10 minutes), maximum 2700000ms (45 minutes). Defaults to 600000ms (10 minutes). The sandbox will terminate all running processes when this timeout is reached.'
+          'Maximum time in milliseconds the sandbox will remain active before automatically shutting down. Minimum 600000ms (10 minutes), maximum 7200000ms (2 hours). Defaults to 3600000ms (60 minutes). The sandbox will terminate all running processes when this timeout is reached.'
         ),
       ports: z
         .array(z.number())
         .max(2)
         .optional()
         .describe(
-          'Array of network ports to expose and make accessible from outside the Vercel Sandbox. These ports allow web servers, APIs, or other services running inside the Vercel Sandbox to be reached externally. Common ports include 3000 (Next.js), 8000 (Python servers), 5000 (Flask), etc.'
+          'Array of network ports to expose and make accessible from outside the sandbox. These ports allow web servers, APIs, or other services running inside the sandbox to be reached externally. Common ports include 3000 (Next.js), 8000 (Python servers), 5000 (Flask), etc.'
         ),
     }),
     execute: async ({ timeout, ports }, { toolCallId }) => {
@@ -38,21 +39,36 @@ export const createSandbox = ({ writer }: Params) =>
       })
 
       try {
-        const sandbox = await Sandbox.create({
-          timeout: timeout ?? 600000,
-          ports,
-        })
-
-        writer.write({
-          id: toolCallId,
-          type: 'data-create-sandbox',
-          data: { sandboxId: sandbox.sandboxId, status: 'done' },
-        })
-
-        return (
-          `Sandbox created with ID: ${sandbox.sandboxId}.` +
-          `\nYou can now upload files, run commands, and access services on the exposed ports.`
+        // Trigger the Trigger.dev task
+        const handle = await tasks.trigger<typeof createSandboxTask>(
+          'create-sandbox',
+          { timeout, ports }
         )
+
+        // Subscribe to real-time updates
+        for await (const run of runs.subscribeToRun(handle.id)) {
+          if (run.status === 'COMPLETED' && run.output) {
+            const output = run.output as { sandboxId: string; status: string }
+            
+            writer.write({
+              id: toolCallId,
+              type: 'data-create-sandbox',
+              data: { sandboxId: output.sandboxId, status: 'done' },
+            })
+
+            return (
+              `Sandbox created with ID: ${output.sandboxId}.` +
+              `\nYou can now upload files, run commands, and access services on the exposed ports.`
+            )
+          }
+
+          if (run.status === 'FAILED' || run.status === 'CRASHED' || run.status === 'SYSTEM_FAILURE') {
+            const errorMsg = typeof run.error === 'string' ? run.error : 'Failed to create sandbox'
+            throw new Error(errorMsg)
+          }
+        }
+
+        throw new Error('Task completed without output')
       } catch (error) {
         const richError = getRichError({
           action: 'Creating Sandbox',

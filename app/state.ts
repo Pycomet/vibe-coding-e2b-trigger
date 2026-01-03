@@ -137,7 +137,7 @@ export function useDataStateMapper() {
       case 'data-run-command':
         if (
           data.data.commandId &&
-          (data.data.status === 'executing' || data.data.status === 'running')
+          (data.data.status === 'running' || data.data.status === 'done')
         ) {
           upsertCommand({
             background: data.data.status === 'running',
@@ -145,6 +145,8 @@ export function useDataStateMapper() {
             cmdId: data.data.commandId,
             command: data.data.command,
             args: data.data.args,
+            exitCode: data.data.exitCode,
+            logs: data.data.logs,
           })
         }
         break

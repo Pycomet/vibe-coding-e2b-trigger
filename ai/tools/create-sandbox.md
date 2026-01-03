@@ -1,4 +1,4 @@
-Use this tool to create a new Vercel Sandbox — an ephemeral, isolated Linux container that serves as your development environment for the current session. This sandbox provides a secure workspace where you can upload files, install dependencies, run commands, start development servers, and preview web apps. Each sandbox is uniquely identified and must be referenced for all subsequent operations (e.g., file generation, command execution, or URL access).
+Use this tool to create a new sandbox — an ephemeral, isolated Linux container that serves as your development environment for the current session. This sandbox provides a secure workspace where you can upload files, install dependencies, run commands, start development servers, and preview web apps. Each sandbox is uniquely identified and must be referenced for all subsequent operations (e.g., file generation, command execution, or URL access).
 
 ## When to Use This Tool
 
@@ -17,13 +17,21 @@ After creation, the sandbox allows you to:
 - Execute shell commands with `Run Command` and `Wait Command`
 - Access running servers through public URLs using `Get Sandbox URL`
 
-Each sandbox mimics a real-world development environment and supports rapid iteration and testing without polluting the local system. The base system is Amazon Linux 2023 with the following additional packages:
+Each sandbox mimics a real-world development environment and supports rapid iteration and testing without polluting the local system. The base system includes:
 
-```
-bind-utils bzip2 findutils git gzip iputils libicu libjpeg libpng ncurses-libs openssl openssl-libs pnpm procps tar unzip which whois zstd
-```
+**Pre-installed tools:**
+- **Node.js** (latest LTS)
+- **npm** (comes with Node.js)
+- **pnpm** (installed automatically for faster package management)
+- **git** (version control)
+- **Standard Linux utilities** (curl, wget, tar, unzip, etc.)
 
-You can install additional packages using the `dnf` package manager. You can NEVER use port 8080 as it is reserved for internal applications. When requested, you need to use a different port.
+**Package managers available:**
+- Use `pnpm` for JavaScript/TypeScript projects (recommended - faster than npm)
+- Use `npm` as fallback
+- Use `dnf` for system packages
+
+**Important:** Port 8080 is reserved for internal applications. Use different ports (3000, 5000, 8000, etc.) for your services.
 
 ## Best Practices
 

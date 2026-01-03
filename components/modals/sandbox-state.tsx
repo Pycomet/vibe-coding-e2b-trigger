@@ -22,7 +22,7 @@ export function SandboxState() {
             Sandbox max. duration reached
           </DialogTitle>
           <DialogDescription className="sr-only">
-            The Vercel Sandbox is already stopped. You can start a new session
+            The sandbox is already stopped. You can start a new session
             by clicking the button below.
           </DialogDescription>
         </DialogHeader>
@@ -35,7 +35,9 @@ export function SandboxState() {
       </Dialog>
     )
   }
-
+  
+  // Just track status, don't show blocking modal
+  // Users can manually restart via the header controls
   return sandboxId ? (
     <DirtyChecker sandboxId={sandboxId} setStatus={setStatus} />
   ) : null

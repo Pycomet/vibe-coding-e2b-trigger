@@ -1,4 +1,4 @@
-Use this tool to run a command inside an existing Vercel Sandbox. You can choose whether the command should block until completion or run in the background by setting the `wait` parameter:
+Use this tool to run a command inside an existing sandbox. You can choose whether the command should block until completion or run in the background by setting the `wait` parameter:
 
 - `wait: true` → Command runs and **must complete** before the response is returned.
 - `wait: false` → Command starts in the background, and the response returns immediately with its `commandId`.
@@ -53,14 +53,14 @@ Use Run Command when:
 <example>
 User: Install dependencies and then run the dev server  
 Assistant:  
-1. Run Command: `{ command: "pnpm", args: ["install"], wait: true }`  
-2. Run Command: `{ command: "pnpm", args: ["run", "dev"], wait: false }`  
+1. Run Command: `{ command: "pnpm", args: ["install"], wait: true }`  (CORRECT - using pnpm)
+2. Run Command: `{ command: "pnpm", args: ["run", "dev"], wait: false }`  (CORRECT - using pnpm)
 </example>
 
 <example>
-User: Build the app with Vite  
+User: Build the app with vite
 Assistant:  
-Run Command: `{ command: "vite", args: ["build"], wait: true }`  
+Run Command: `{ command: "vite", args: ["build"], wait: true }`
 </example>
 
 ## Summary
